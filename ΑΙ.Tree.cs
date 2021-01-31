@@ -10,106 +10,122 @@ namespace TicTac
     {
         public class Node
         {
-            List<Node> Parents = new List<Node>();
-            List<Node> Children = new List<Node>();
-            static List<Node>[] Neighbor = new List<Node>[10]{new List<Node>(), new List<Node>(), new List<Node>(), new List<Node>(), new List<Node>(),
-            new List<Node>(),new List<Node>(),new List<Node>(),new List<Node>(),new List<Node>()};
-            int Value = 0;
-            int Level = 0;
-            Board.State Win = TicTac.Board.State.Empty;
-            public Board.State[,] Board = new Board.State[3, 3];
-            int ID = 0;
-            static int cID = 1;
-            static Node Root;
+            private readonly List<Node> _parents = new();
+            private readonly List<Node> _children = new();
 
-            internal Node( Board.State[,] State)
+            private static readonly List<Node>[] _neighbor = {
+                new(), new(), new(), new(), new(),
+                new(), new(), new(), new(), new()
+            };
+
+            private int _level;
+            
+            private Board.State _win = TicTac.Board.State.Empty;
+            private Board.State[,] Board { get; set; }
+            
+            private int _id;
+            private int _value;
+            private static int _cId = 1;
+            private static Node _root;
+
+            private Node(Board.State[,] state)
             {
-                
-                Board = State;
+                Board = state;
 
-                ID = cID;
-                cID++;
+                _id = _cId;
+                _cId++;
                 //Console.WriteLine(ID);
-                
             }
+
             public Node()
             {
-                this.Board = new Board.State[3, 3] { { TicTac.Board.State.Empty, TicTac.Board.State.Empty, TicTac.Board.State.Empty },
-                { TicTac.Board.State.Empty, TicTac.Board.State.Empty, TicTac.Board.State.Empty },
-                { TicTac.Board.State.Empty, TicTac.Board.State.Empty, TicTac.Board.State.Empty }};
+                this.Board = new Board.State[3, 3]
+                {
+                    {TicTac.Board.State.Empty, TicTac.Board.State.Empty, TicTac.Board.State.Empty},
+                    {TicTac.Board.State.Empty, TicTac.Board.State.Empty, TicTac.Board.State.Empty},
+                    {TicTac.Board.State.Empty, TicTac.Board.State.Empty, TicTac.Board.State.Empty}
+                };
                 GenerateChildren();
-                Neighbor[Level].Add(this);
+                _neighbor[_level].Add(this);
             }
+
             void GenerateChildren()
             {
-                if (Win == TicTac.Board.State.Empty)
+                if (_win == TicTac.Board.State.Empty)
                 {
                     int index = 0;
-                    foreach (TicTac.Board.State a in Board)
+                    foreach (Board.State a in Board)
                     {
                         //Console.WriteLine(this.ID);
                         //debug purposes
-                       if (Level < 9)
+                        if (_level < 9)
                             if (a == TicTac.Board.State.Empty)
                             {
-                                TicTac.Board.State[,] n = new Board.State[3, 3];
+                                Board.State[,] n = new Board.State[3, 3];
                                 n = Board.Clone() as Board.State[,];
-                                n[index / 3, index % 3] = GetPlayer(Level + 1);
+                                n[index / 3, index % 3] = GetPlayer(_level + 1);
                                 //Console.WriteLine(index / 3 + "," + index % 3 + ", Index of " + index);
-                                Node q = new Node( n);
-                                q.Level = Level + 1;
+                                Node q = new Node(n);
+                                q._level = _level + 1;
                                 //Console.WriteLine(q.Level);
                                 bool exists = false;
-                                foreach (Node f in Neighbor[q.Level])
+                                foreach (Node f in _neighbor[q._level])
                                 {
                                     //Console.WriteLine("Checking on Level " + q.Level + " if "+ f.ID + " and " + q.ID + " are the same");
                                     if (f == q)
                                     {
                                         //Console.WriteLine("Skipping");
-                                        f.Parents.Add(this);
-                                        Children.Add(f);
+                                        f._parents.Add(this);
+                                        _children.Add(f);
                                         exists = true;
                                         break;
                                     }
                                 }
+
                                 if (!exists)
                                 {
                                     //Console.WriteLine(q.ID+" Generated by "+ID+" on level "+q.Level);
-                                    Children.Add(q);
-                                    q.Parents.Add(this);
+                                    _children.Add(q);
+                                    q._parents.Add(this);
 
-                                    Neighbor[q.Level].Add(q);
-                                    q.Win = CheckForWins(q.Board);
+                                    _neighbor[q._level].Add(q);
+                                    q._win = CheckForWins(q.Board);
 
-                                    if (q.Win == TicTac.Board.State.P1)
+                                    if (q._win == TicTac.Board.State.P1)
                                         q.UpValue(1);
-                                    if (q.Win == TicTac.Board.State.P2)
+                                    if (q._win == TicTac.Board.State.P2)
                                         q.UpValue(-1);
                                     q.GenerateChildren();
                                 }
-                                else {  q = null; }
-
+                                else
+                                {
+                                    q = null;
+                                }
                             }
 
                         index++;
                         //Console.WriteLine(index);
                     }
                 }
+
                 ;
             }
 
             private void UpValue(int a)
             {
-                Value += a;
-                foreach (Node q in Parents)
+                _value += a;
+                foreach (Node q in _parents)
                 {
                     q.UpValue(a);
                 }
             }
-            public void Rotate(int a)
+
+            public void Rotate(int a = 1)
             {
-                for (int q = 0; q < a - 1; q++) { this.Rotate(1); } //Run this "a" times
-                Board.State[,] Rotated = new Board.State[3, 3];
+                if (a <= 0)
+                    return;
+
+                Board.State[,] rotated = new Board.State[3, 3];
                 /*Rotations go counter-clockwise
                  * 1 2 3
                  * 4 5 6
@@ -119,118 +135,117 @@ namespace TicTac
                  * 2 5 8
                  * 1 4 7
                  * */
-                Rotated[0, 0] = Board[0, 2];
-                Rotated[0, 1] = Board[1, 2];
-                Rotated[0, 2] = Board[2, 2];
-                Rotated[1, 0] = Board[0, 1];
-                Rotated[1, 1] = Board[1, 1];
-                Rotated[1, 2] = Board[2, 1];
-                Rotated[2, 0] = Board[0, 0];
-                Rotated[2, 1] = Board[1, 0];
-                Rotated[2, 2] = Board[2, 0];
-                Board = Rotated;
+                rotated[0, 0] = Board[0, 2];
+                rotated[0, 1] = Board[1, 2];
+                rotated[0, 2] = Board[2, 2];
+                rotated[1, 0] = Board[0, 1];
+                rotated[1, 1] = Board[1, 1];
+                rotated[1, 2] = Board[2, 1];
+                rotated[2, 0] = Board[0, 0];
+                rotated[2, 1] = Board[1, 0];
+                rotated[2, 2] = Board[2, 0];
+                Board = rotated;
+
+                Rotate(--a);
             }
+
             public void Mirror(int a)
             {
-
                 /*Rotations go counter-clockwise
                  *Mirrored view. 0 to 3 flip it. 
                  * */
                 if (a == 0 || a == 2)
                 {
-                    Board.State[,] Mirrored = new Board.State[3, 3];
-                    Mirrored[0, 0] = Board[2, 0];
-                    Mirrored[0, 1] = Board[2, 1];
-                    Mirrored[0, 2] = Board[2, 2];
-                    Mirrored[2, 0] = Board[0, 0];
-                    Mirrored[2, 1] = Board[0, 1];
-                    Mirrored[2, 2] = Board[0, 2];
+                    Board.State[,] mirrored = new Board.State[3, 3];
+                    mirrored[0, 0] = Board[2, 0];
+                    mirrored[0, 1] = Board[2, 1];
+                    mirrored[0, 2] = Board[2, 2];
+                    mirrored[2, 0] = Board[0, 0];
+                    mirrored[2, 1] = Board[0, 1];
+                    mirrored[2, 2] = Board[0, 2];
 
-                    Mirrored[1, 0] = Board[1, 0];
-                    Mirrored[1, 1] = Board[1, 1];
-                    Mirrored[1, 2] = Board[1, 2];
-                    Board = Mirrored;
+                    mirrored[1, 0] = Board[1, 0];
+                    mirrored[1, 1] = Board[1, 1];
+                    mirrored[1, 2] = Board[1, 2];
+                    Board = mirrored;
                 }
 
                 if (a == 1 || a == 3)
                 {
-                    Board.State[,] Mirrored = new Board.State[3, 3];
-                    Mirrored[0, 0] = Board[0, 2];
-                    Mirrored[0, 2] = Board[0, 0];
-                    Mirrored[1, 0] = Board[1, 2];
-                    Mirrored[1, 2] = Board[1, 0];
-                    Mirrored[2, 0] = Board[2, 2];
-                    Mirrored[2, 2] = Board[2, 0];
+                    Board.State[,] mirrored = new Board.State[3, 3];
+                    mirrored[0, 0] = Board[0, 2];
+                    mirrored[0, 2] = Board[0, 0];
+                    mirrored[1, 0] = Board[1, 2];
+                    mirrored[1, 2] = Board[1, 0];
+                    mirrored[2, 0] = Board[2, 2];
+                    mirrored[2, 2] = Board[2, 0];
 
-                    Mirrored[0, 1] = Board[0, 1];
-                    Mirrored[1, 1] = Board[1, 1];
-                    Mirrored[2, 1] = Board[2, 1];
-                    Board = Mirrored;
+                    mirrored[0, 1] = Board[0, 1];
+                    mirrored[1, 1] = Board[1, 1];
+                    mirrored[2, 1] = Board[2, 1];
+                    Board = mirrored;
                 }
+
                 if (a > 3)
                     throw new InvalidOperationException("Cannot Mirror on 4");
             }
+
             public static bool operator ==(Node a, Node b)
             {
-                TicTac.Board.State[,] d = b.Board.Clone() as Board.State[,];
+                if (ReferenceEquals(a, b))
+                    return true;
+                if (a is null || b is null)
+                    return false;
+                
+                Board.State[,] d = b.Board.Clone() as Board.State[,];
                 Node c = new Node(d);
-                bool IsEqual = false;
+
+                bool CompareNodes()
+                {
+                    for (int q = 0; q < 3; q++)
+                    {
+                        for (int w = 0; w < 3; w++)
+                        {
+                            if (a.Board[q, w] == c.Board[q, w]) continue;
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+
                 for (int x = 0; x < 4; x++)
                 {
                     for (int y = 0; y < 4; y++)
                     {
-                        if (!IsEqual)
-                        {
-                            bool isSame = true;
-                            for (int q = 0; q < 3; q++)
-                            {
-                                for (int w = 0; w < 3; w++)
-                                {
-                                    if (a.Board[q, w] != c.Board[q, w])
-                                        isSame = false;
-                                }
-                            }
-                            if (isSame)
-                                return true;
-                        }
+                        if (CompareNodes())
+                            return true;
                         c.Mirror(y);
                     }
-                    c.Rotate(1);
+                    c.Rotate();
                 }
-                //Console.WriteLine(IsEqual);
-                return IsEqual;
+                return false;
             }
-            public static bool operator !=(Node a, Node b)
-            {
-                return !(a == b);
-            }
+
+            public static bool operator !=(Node a, Node b) => !(a == b);
+
             public static void GenerateTree()
             {
-                Root = new Node();
-                if (cID >= 400)
+                _root = new();
+                if (_cId >= 400)
                     ;
             }
         }
 
 
-
-        private static void FlipPlayer(Board.State Player)
+        private static void FlipPlayer(Board.State player)
         {
-            if (Player == Board.State.P1)
-                Player = Board.State.P2;
-            else if (Player == Board.State.P2)
-                Player = Board.State.P1;
-        }
-        public static Board.State GetPlayer(int a)
-        {
-            if (a % 2!= 0)
-            {
-                return Board.State.P1;
-
-            }
-            else return Board.State.P2;
+            if (player == Board.State.P1)
+                player = Board.State.P2;
+            else if (player == Board.State.P2)
+                player = Board.State.P1;
         }
 
-
+        public static Board.State GetPlayer(int a) => a % 2 != 0 ? Board.State.P1 : Board.State.P2;
     }
 }
