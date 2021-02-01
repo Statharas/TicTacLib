@@ -9,10 +9,25 @@ namespace TicTac
 {
     public static partial class ΑΙ
     {
-        public static ushort[] Play()
+        public static Board.State[,] Play(Board.State[,] Last)
         {
+            Board.State[,] ReturnState;
+            List<Node> z = Node.Neighbourhood[GetLevel(Last)];
+            Node q = z.Find(o => o.BoardsEqual(Last));
+            q= q.Children.OrderBy(o => o.Value).Last() ;
+            Console.WriteLine("Picked Value of " + q.Value);
+            ReturnState = q.Board;
+            return ReturnState;
+        }
 
-            return new ushort[2] { 1, 1 };
+        public static int GetLevel(Board.State[,] a){
+            int count = 9;
+            foreach(Board.State z in a){
+                if (z == Board.State.Empty)
+                    count--;
+            }
+            return count;
+
         }
         public static State CheckForWins(Board.State[,] Pattern)
         {
