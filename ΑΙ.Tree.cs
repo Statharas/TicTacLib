@@ -23,6 +23,9 @@ namespace TicTac
             private int _id;
             private int _value;
             public int Value { get { return _value; } }
+
+            public Board.State Win { get => _win; }
+
             private static int _cId = 1;
             private static Node _root;
 
@@ -43,8 +46,7 @@ namespace TicTac
                     {TicTac.Board.State.Empty, TicTac.Board.State.Empty, TicTac.Board.State.Empty},
                     {TicTac.Board.State.Empty, TicTac.Board.State.Empty, TicTac.Board.State.Empty}
                 };
-                GenerateChildren();
-                _neighbor[_level].Add(this);
+                
             }
 
             void GenerateChildren()
@@ -145,48 +147,84 @@ namespace TicTac
                 /*Rotations go counter-clockwise
                  *Mirrored view. 0 to 3 flip it. 
                  * */
+                if (a < 0)
+                    return;
                 if (a == 0 || a == 2)
                 {
-                    Board.State[,] mirrored = new Board.State[3, 3];
-                    mirrored[0, 0] = _board[2, 0];
-                    mirrored[0, 1] = _board[2, 1];
-                    mirrored[0, 2] = _board[2, 2];
-                    mirrored[2, 0] = _board[0, 0];
-                    mirrored[2, 1] = _board[0, 1];
-                    mirrored[2, 2] = _board[0, 2];
-
-                    mirrored[1, 0] = _board[1, 0];
-                    mirrored[1, 1] = _board[1, 1];
-                    mirrored[1, 2] = _board[1, 2];
-                    _board = mirrored;
+                    MirrorX();
                 }
 
                 if (a == 1 || a == 3)
                 {
-                    Board.State[,] mirrored = new Board.State[3, 3];
-                    mirrored[0, 0] = _board[0, 2];
-                    mirrored[0, 2] = _board[0, 0];
-                    mirrored[1, 0] = _board[1, 2];
-                    mirrored[1, 2] = _board[1, 0];
-                    mirrored[2, 0] = _board[2, 2];
-                    mirrored[2, 2] = _board[2, 0];
-
-                    mirrored[0, 1] = _board[0, 1];
-                    mirrored[1, 1] = _board[1, 1];
-                    mirrored[2, 1] = _board[2, 1];
-                    _board = mirrored;
+                    MirrorY();
                 }
 
                 if (a > 3)
                     throw new InvalidOperationException("Cannot Mirror on 4");
             }
+            private void MirrorX()
+            {
+                Board.State[,] mirrored = new Board.State[3, 3];
+                mirrored[0, 0] = _board[2, 0];
+                mirrored[0, 1] = _board[2, 1];
+                mirrored[0, 2] = _board[2, 2];
+                mirrored[2, 0] = _board[0, 0];
+                mirrored[2, 1] = _board[0, 1];
+                mirrored[2, 2] = _board[0, 2];
 
+                mirrored[1, 0] = _board[1, 0];
+                mirrored[1, 1] = _board[1, 1];
+                mirrored[1, 2] = _board[1, 2];
+                _board = mirrored;
+            }
+            private void MirrorY()
+            {
+                Board.State[,] mirrored = new Board.State[3, 3];
+                mirrored[0, 0] = _board[0, 2];
+                mirrored[0, 2] = _board[0, 0];
+                mirrored[1, 0] = _board[1, 2];
+                mirrored[1, 2] = _board[1, 0];
+                mirrored[2, 0] = _board[2, 2];
+                mirrored[2, 2] = _board[2, 0];
+
+                mirrored[0, 1] = _board[0, 1];
+                mirrored[1, 1] = _board[1, 1];
+                mirrored[2, 1] = _board[2, 1];
+                _board = mirrored;
+            }
+            public void Unmirror(int a)
+            {
+                a--;
+                if (a == 0)
+                    MirrorX();
+                if (a == 2)
+                    MirrorY();
+                if (a == 1)
+                {
+                    MirrorX();
+                    MirrorY();
+                }
+            }
             public bool BoardsEqual(Board.State[,] b)
             {
+                return BoardsEqual(b, out _, out _);
+            }
+            /// <summary>
+            /// Checks if this board is equal to another, including possible mirrors and rotations
+            /// </summary>
+            /// <param name="b">The target board to check</param>
+            /// <param name="Rots">The rotations needed to get the target board.</param>
+            /// <param name="Mirr">The mirrors needed to get the target board.</param>
+            /// <returns>True if the boards are equal.</returns>
+            public bool BoardsEqual(Board.State[,] b, out int Rots, out int Mirr)
+            {
+                Rots = 0;
+                Mirr = 0;
                 if (ReferenceEquals(this.Board, b))
                     return true;
                 if (this is null || b is null)
                     return false;
+
 
                 Board.State[,] d = b.Clone() as Board.State[,];
                 Node c = new Node(d);
@@ -209,12 +247,23 @@ namespace TicTac
                 {
                     for (int y = 0; y < 4; y++)
                     {
+
                         if (CompareNodes())
+                        {
+
+                            if (x != 0)
+                                Rots = 4 - x;//If the rotation is at 1, then we have to do 3 more rotations to get back to original
+                            else
+                                Rots = 0;
+                            Mirr = y; //rotations cancel eachother out. If y=0, X mirror, y=1, y mirror, y=2 x mirror to get Y, y=3 y mirror to get original
+
                             return true;
+                        }
                         c.Mirror(y);
                     }
                     c.Rotate();
                 }
+                Rots = Mirr = 0;
                 return false;
             }
 
@@ -222,6 +271,8 @@ namespace TicTac
             public static void GenerateTree()
             {
                 _root = new();
+                _neighbor[_root._level].Add(_root);
+                _root.GenerateChildren();
                 //The following is a benchmark line for use with breakpoints
                 ;
             }
